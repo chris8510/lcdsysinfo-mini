@@ -7,6 +7,8 @@ Lightweight status display for the **Coldtears LCDSysInfo 3.5** (USB display 480
 
 ![Display showing a GOverlay template, drawn by LCDSysInfo Mini](docs/screenshot.png)
 
+*Example only: the logos in this screenshot come from a user's own GOverlay template. See [Trademarks](#trademarks).*
+
 - Draws your **GOverlay template** (`*.gov`) as is: background, icons, texts, rectangles, sensor values.
 - Sensor values come from **LibreHardwareMonitor** (CPU/GPU load and temperature, RAM, fans, SSD temperature)
   and from Windows (free disk space). AIDA64 is not needed.
@@ -108,6 +110,10 @@ powershell -ExecutionPolicy Bypass -File tools\fetch-lhm.ps1
 Created by **Claude** (Anthropic) and **[chris8510](https://github.com/chris8510)**.
 
 Not an official product of Coldtears Electronics or GOverlay. Use at your own risk.
+
+## Trademarks
+
+AMD, Ryzen and Radeon are trademarks of Advanced Micro Devices, Inc. NZXT is a trademark of NZXT, Inc. The logos visible in the screenshot belong to their respective owners. They are not our work, are not covered by this project's license, and the logo image files are **not included** in this repository or its releases. The logos appear only in the screenshot, as an example of a user's own template stored on the display. Coldtears, GOverlay, AIDA64 and other product names are trademarks of their respective owners. Their use here is for identification only and does not imply endorsement or affiliation.
 
 ## License
 

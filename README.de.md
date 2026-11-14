@@ -7,6 +7,8 @@ Schlanke Statusanzeige für das **Coldtears LCDSysInfo 3.5** (USB-Display 480×3
 
 ![Display mit einer GOverlay-Vorlage, gezeichnet von LCDSysInfo Mini](docs/screenshot.png)
 
+*Nur ein Beispiel: Die Logos im Bild stammen aus der eigenen GOverlay-Vorlage eines Nutzers. Siehe [Marken](#marken).*
+
 - Zeichnet deine **GOverlay-Vorlage** (`*.gov`) unverändert: Hintergrund, Icons, Texte, Rechtecke, Sensorwerte.
 - Sensorwerte kommen aus **LibreHardwareMonitor** (CPU/GPU-Last und -Temperatur, RAM, Lüfter, SSD-Temperatur)
   und aus Windows (freier Speicher). AIDA64 wird nicht gebraucht.
@@ -109,6 +111,10 @@ powershell -ExecutionPolicy Bypass -File tools\fetch-lhm.ps1
 Erstellt von **Claude** (Anthropic) und **[chris8510](https://github.com/chris8510)**.
 
 Kein offizielles Produkt von Coldtears Electronics oder GOverlay. Benutzung auf eigene Verantwortung.
+
+## Marken
+
+AMD, Ryzen und Radeon sind Marken von Advanced Micro Devices, Inc. NZXT ist eine Marke von NZXT, Inc. Die im Screenshot sichtbaren Logos gehören ihren jeweiligen Inhabern. Sie stammen nicht von uns, fallen nicht unter die Lizenz dieses Projekts, und die Logo-Dateien sind **weder in diesem Repository noch in den Releases enthalten**. Die Logos erscheinen nur im Screenshot, als Beispiel für eine eigene Vorlage, die auf dem Display gespeichert ist. Coldtears, GOverlay, AIDA64 und andere Produktnamen sind Marken ihrer jeweiligen Inhaber. Sie werden hier nur zur Bezeichnung verwendet; daraus folgt keine Verbindung zu den Inhabern und keine Billigung durch sie.
 
 ## Lizenz
 
