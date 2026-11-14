@@ -1,32 +1,41 @@
 # LCDSysInfo Mini
 
-Schlanke Statusanzeige für das **Coldtears LCDSysInfo 3.5** (USB-Display 480×320, `VID 20A0 / PID 41ED`)
-– ein Ersatz für **GOverlay** ohne AIDA64.
+*[Deutsche Fassung](README.de.md)*
 
-![Display mit einer GOverlay-Vorlage, gezeichnet von LCDSysInfo Mini](docs/screenshot.png)
+Lightweight status display for the **Coldtears LCDSysInfo 3.5** (USB display 480×320, `VID 20A0 / PID 41ED`)
+– a replacement for **GOverlay** that does not need AIDA64.
 
-- Zeichnet deine **GOverlay-Vorlage** (`*.gov`) unverändert: Hintergrund, Icons, Texte, Rechtecke, Sensorwerte.
-- Sensorwerte kommen aus **LibreHardwareMonitor** (CPU/GPU-Last und -Temperatur, RAM, Lüfter, SSD-Temperatur)
-  und aus Windows (freier Speicher). AIDA64 wird nicht gebraucht.
-- Das Display rendert selbst. Icons und Schriften liegen schon in seinem Speicher, die App schickt nur kleine
-  USB-Befehle und zeichnet nur, was sich geändert hat.
-- Ein Prozess, ca. 1 % eines CPU-Kerns und knapp 70 MB Arbeitsspeicher (gemessen auf einem Ryzen 7 5800X).
-- Symbol im Infobereich mit Menü: *Neu zeichnen*, *Vorlage wählen …*, *Log öffnen*, *Info …*, *Beenden*.
+![Display showing a GOverlay template, drawn by LCDSysInfo Mini](docs/screenshot.png)
 
-## Voraussetzungen
+- Draws your **GOverlay template** (`*.gov`) as is: background, icons, texts, rectangles, sensor values.
+- Sensor values come from **LibreHardwareMonitor** (CPU/GPU load and temperature, RAM, fans, SSD temperature)
+  and from Windows (free disk space). AIDA64 is not needed.
+- The display renders by itself: icons and fonts are already stored in its memory, the app only sends small USB
+  commands and redraws only what changed.
+- One process, about 1 % of one CPU core and just under 70 MB of memory (measured on a Ryzen 7 5800X).
+- Tray icon with menu: *Redraw*, *Choose template …*, *Open log*, *Info …*, *Exit*.
+  The app is in English, or in German when Windows is set to German.
+
+![Info dialog](docs/info.png)
+
+## Requirements
 
 | | |
 |---|---|
-| Windows 10/11 x64 mit .NET Framework 4.8 | ist bei aktuellem Windows dabei |
-| USB-Treiber **libusb-win32** für das Display | wird mit GOverlay bzw. dem LCDSysInfo-Treiber installiert |
-| **[PawnIO](https://pawnio.eu)** | separat installieren; LibreHardwareMonitor braucht den Treiber für CPU-Temperatur und Lüfter |
-| Adminrechte beim Start | übernimmt die Autostart-Aufgabe (siehe unten) |
+| Windows 10/11 x64 with .NET Framework 4.8 | included in current Windows |
+| **libusb-win32** USB driver for the display | installed with GOverlay or the LCDSysInfo driver |
+| **[PawnIO](https://pawnio.eu)** | install separately; LibreHardwareMonitor needs this driver for CPU temperature and fans |
+| Admin rights at start | handled by the autostart task (see below) |
 
-LibreHardwareMonitor selbst muss **nicht** installiert werden, die Bibliothek wird mitgeliefert.
-Die Icons und Schriften, die eine Vorlage verwendet, müssen auf dem Display liegen (das ist der Fall, wenn
-GOverlay die Vorlage schon einmal angezeigt hat).
+LibreHardwareMonitor itself does **not** need to be installed; the library ships with the app.
+The icons and fonts a template uses must be on the display (they are if GOverlay has shown the template before).
 
 ## Installation
+
+**Download:** take `LCDSysInfoMini-<version>.zip` from [Releases](https://github.com/chris8510/lcdsysinfo-mini/releases),
+extract it to a permanent folder and continue with *Autostart*.
+
+**Or build it yourself:**
 
 ```bat
 git clone https://github.com/chris8510/lcdsysinfo-mini.git
@@ -34,73 +43,73 @@ cd lcdsysinfo-mini\app
 build.cmd
 ```
 
-`build.cmd` lädt beim ersten Mal LibreHardwareMonitorLib 0.9.6 samt Abhängigkeiten von nuget.org
-(`tools\fetch-lhm.ps1`, feste Versionen) und kompiliert die App mit dem C#-Compiler, der in Windows enthalten ist.
-Ergebnis: `app\LCDSysInfoMini\LCDSysInfoMini.exe`.
+On first run `build.cmd` downloads LibreHardwareMonitorLib 0.9.6 and its dependencies from nuget.org
+(`tools\fetch-lhm.ps1`, pinned versions) and compiles the app with the C# compiler that ships with Windows.
+Result: `app\LCDSysInfoMini\LCDSysInfoMini.exe`.
 
-**Autostart:** `app\install_task.ps1` als Administrator ausführen. Das Skript
-- legt die geplante Aufgabe `lcdsysinfo-mini` an (bei Anmeldung, mit Adminrechten) und startet sie,
-- sichert GOverlays Autostart-Aufgabe nach `app\backup_GOverlay_Autostart.xml` und deaktiviert sie.
+**Autostart:** run `install_task.ps1` (in `app\`, or in the root of the release ZIP) as administrator. It
+- creates the scheduled task `lcdsysinfo-mini` (at logon, with admin rights) and starts it,
+- backs up GOverlay's autostart task to `backup_GOverlay_Autostart.xml` and disables it.
 
-Ein Eintrag im Autostart-Ordner reicht nicht: Programme dort dürfen nicht mit Adminrechten starten.
+The Startup folder is not enough: programs started from there cannot run with admin rights.
 
-Beim ersten Start fragt die App nach der Vorlage (`*.gov`, meist im GOverlay-Ordner). Die Wahl wird in
-`LCDSysInfoMini.ini` gespeichert.
+On first start the app asks for the template (`*.gov`, usually in the GOverlay folder). The choice is saved in
+`LCDSysInfoMini.ini`.
 
-**Zurück zu GOverlay:** App über das Menü beenden, Aufgabe `lcdsysinfo-mini` in der Aufgabenplanung
-deaktivieren, `GOverlay Autostart` wieder aktivieren.
+**Back to GOverlay:** exit the app from the menu, disable the task `lcdsysinfo-mini` in Task Scheduler and
+re-enable `GOverlay Autostart`.
 
-## Wie Sensoren zugeordnet werden
+## How sensors are mapped
 
-GOverlay-Vorlagen nennen AIDA64- oder OpenHardwareMonitor-Sensoren. Die App ordnet sie LibreHardwareMonitor zu
+GOverlay templates refer to AIDA64 or OpenHardwareMonitor sensors. The app maps them to LibreHardwareMonitor
 (`app/src/Sensors.cs`):
 
-| Vorlage | LibreHardwareMonitor |
+| Template | LibreHardwareMonitor |
 |---|---|
-| `[OHMD:/amdcpu/0/load/0]` | CPU-Last gesamt |
-| `[AIDA:Value.SMEMUTI]` | RAM-Auslastung |
-| `[AIDA:Value.DGPU1]` | GPU-Last (bei AIDA64 eigentlich GPU-Lüfter in %, wird in Vorlagen aber meist als „GPU %“ beschriftet) |
-| `[AIDA:Value.TCPU]` / `TGPU1` | CPU- bzw. GPU-Temperatur |
-| `[AIDA:Value.FCPU]` / `FGPU1` | CPU-Lüfter (Mainboard-Chip) bzw. GPU-Lüfter |
-| `[AIDA:Value.THDDn]` | Temperatur des n-ten Laufwerks (AIDA zählt ab 1, Windows ab 0) |
-| `[AIDA:Value.SDRVxFREESPC]` | freier Speicher auf Laufwerk x: in GB |
+| `[OHMD:/amdcpu/0/load/0]` | total CPU load |
+| `[AIDA:Value.SMEMUTI]` | memory utilisation |
+| `[AIDA:Value.DGPU1]` | GPU load (in AIDA64 this is the GPU fan in %, but templates usually label it "GPU %") |
+| `[AIDA:Value.TCPU]` / `TGPU1` | CPU / GPU temperature |
+| `[AIDA:Value.FCPU]` / `FGPU1` | CPU fan (mainboard chip) / GPU fan |
+| `[AIDA:Value.THDDn]` | temperature of the n-th drive (AIDA counts from 1, Windows from 0) |
+| `[AIDA:Value.SDRVxFREESPC]` | free space on drive x: in GB |
 
-Nach dem ersten Durchlauf wird nur noch die Hardware abgefragt, die die Vorlage braucht. Laufwerke werden alle
-10 s, Mainboard-Sensoren alle 5 s gelesen. Die vollständige Sensorliste schreibt die App nach `sensors.txt`.
+After the first pass only the hardware the template needs is polled; drives every 10 s, mainboard sensors every
+5 s. The app writes the complete sensor list to `sensors.txt`.
 
-Nur angenähert umgesetzt: `maxdigits`, `font_fixedspacing` und Farbschwellen (`t1_*`) aus GOverlay-Vorlagen.
+Only approximated: `maxdigits`, `font_fixedspacing` and colour thresholds (`t1_*`) from GOverlay templates.
 
-## Protokoll
+## Protocol
 
-Das USB-Protokoll wurde aus GOverlay 1.4.3 rekonstruiert, ausschließlich durch statische Analyse und lesende
-Tests am Gerät. Details stehen in [docs/PROTOCOL.md](docs/PROTOCOL.md). Alle Befehle sind Vendor-Control-Transfers
-auf Endpoint 0. Die App benutzt nur Zeichen- und Lesebefehle. Befehle, die Flash, EEPROM oder Firmware verändern
-(14, 15, 16, 28), sind bewusst nicht implementiert.
+The USB protocol was reconstructed from GOverlay 1.4.3 by static analysis and read-only tests on the device.
+Details: [docs/PROTOCOL.md](docs/PROTOCOL.md). All commands are vendor control transfers on endpoint 0. The app
+only uses drawing and read commands; commands that modify flash, EEPROM or firmware (14, 15, 16, 28) are
+deliberately not implemented.
 
-## Python-Prototyp
+## Python prototype
 
-Im Hauptordner liegt der Python-Prototyp, aus dem die App entstanden ist (`lcd.py`, `govtemplate.py`,
-`sensormap.py`, `sensors_lhm.py`, `lcdmini.py`). Er braucht Python 3.12 mit `pyusb`, `psutil` und `pythonnet`:
+The root folder contains the Python prototype the app grew out of (`lcd.py`, `govtemplate.py`, `sensormap.py`,
+`sensors_lhm.py`, `lcdmini.py`). It needs Python 3.12 with `pyusb`, `psutil` and `pythonnet`:
 
 ```bat
 python -m venv .venv
 .venv\Scripts\pip install pyusb psutil pythonnet
 powershell -ExecutionPolicy Bypass -File tools\fetch-lhm.ps1
-.venv\Scripts\python lcdmini.py info          &rem nur lesen: Seriennummer, Firmware, Dateitabelle
-.venv\Scripts\python lcdmini.py gov  "C:\Pfad\zur\Vorlage.gov"
-.venv\Scripts\python test_offline.py          &rem Paketkodierung ohne Gerät prüfen
-.venv\Scripts\python screenshot.py bild.png 2 &rem Display zurücklesen (halbe Auflösung, ca. 3 min)
+.venv\Scripts\python lcdmini.py info          &rem read-only: serial, firmware, file table
+.venv\Scripts\python lcdmini.py gov "C:\path\to\template.gov"
+.venv\Scripts\python test_offline.py          &rem check packet encoding without a device
+.venv\Scripts\python screenshot.py image.png 2 &rem read the display back (half resolution, about 3 min)
 ```
 
-`measure_cpu.ps1` misst den CPU-Verbrauch der laufenden App über die CPU-Zyklen.
+`measure_cpu.ps1` measures the CPU usage of the running app via CPU cycles.
 
-## Mitwirkende
+## Credits
 
-Erstellt von **Claude** (Anthropic) und **[chris8510](https://github.com/chris8510)**.
+Created by **Claude** (Anthropic) and **[chris8510](https://github.com/chris8510)**.
 
-Kein offizielles Produkt von Coldtears Electronics oder GOverlay. Benutzung auf eigene Verantwortung.
+Not an official product of Coldtears Electronics or GOverlay. Use at your own risk.
 
-## Lizenz
+## License
 
-Eigener Code: [MIT](LICENSE). Mitgenutzte Bibliotheken behalten ihre Lizenzen, siehe
+Own code: [MIT](LICENSE). Third-party libraries keep their licenses, see
 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

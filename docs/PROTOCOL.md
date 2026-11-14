@@ -1,157 +1,134 @@
-# LCDSysInfo 3.5 (USB 20A0:41ED): rekonstruiertes Protokoll
+# LCDSysInfo 3.5 (USB 20A0:41ED): reconstructed protocol
 
-Quelle: statische Analyse von `GOverlay.exe` 1.4.3
+*[Deutsche Fassung](PROTOCOL.de.md)*
+
+Source: static analysis of `GOverlay.exe` 1.4.3
 (SHA-256 `14df5442…bd4e767`, MVID `71548391-6036-4f9d-80ee-efb6c3aac153`)
-mit REA `inspect_managed_members` (Evidence `ev_a8258dd5…6592`), Klasse
-`GOverlay.LCDsysinfo2`. Die Methodennamen sind nicht verschleiert.
+with REA `inspect_managed_members`, class `GOverlay.LCDsysinfo2`. Method names are not obfuscated.
 
-Alles hier ist aus dem IL-Code abgeleitet. „Beobachtet“ heißt: steht so im
-Code. „Vermutet“ heißt: gedeutet.
+Everything here is derived from the IL code. "Observed" means it is written that way in the code; "inferred" means
+it is an interpretation.
 
-**Am Gerät bestätigt (2026-11-09, Firmware 251):**
-- Lesebefehle: Seriennummer, Firmware, Sperrstatus, Dateitabelle mit 134
-  Einträgen, Pixel lesen (136).
-- Zeichenbefehle: Füllen (26), Text mit eingebauter Schrift (25), Rechtecke
-  (191).
+**Confirmed on the device (firmware 251):**
+- Read commands: serial number, firmware, lock status, file table (134 entries), pixel read (136).
+- Drawing commands: fill (26), built-in font text (25), rectangles (191), icons with and without transparency
+  (29/193), flash font text (190).
 
-Noch nicht am Gerät getestet: Icons (29/193), Flash-Schriften (190),
-Helligkeit (13), Hintergrund (30).
+Not yet tested on the device: brightness (13), background image (30).
 
 ## Transport
 
-- Bibliothek: LibUsbDotNet (`UsbDevice.ControlTransfer`, `UsbSetupPacket`),
-  Treiber libusb-win32 (`libusb0.sys`).
-- **Alle Befehle sind Control-Transfers am Endpoint 0.** Es gibt keine Bulk-
-  oder Interrupt-Endpoints für Zeichenbefehle.
-  - Schreiben: `bmRequestType = 0x40` (Vendor, Host→Gerät)
-  - Lesen: `bmRequestType = 0xC0` (Vendor, Gerät→Host)
-- Mehrbyte-Werte im Datenteil sind **Big-Endian** (`hi = v / 256`, `lo = v % 256`).
-- Farben sind **RGB565** (16 Bit), z. B. `65535` = weiß.
-- Display: **480 × 320** Pixel (Grenzprüfungen in `Draw_Text_Font`).
-- Für `wLength` übergibt der Code im Setup-Paket 0, die tatsächliche Länge
-  kommt aus dem Puffer, den `ControlTransfer` mitbekommt. Vermutet: Die
-  Bibliothek setzt `wLength` aus der Pufferlänge.
+- Library used by GOverlay: LibUsbDotNet (`UsbDevice.ControlTransfer`, `UsbSetupPacket`),
+  driver libusb-win32 (`libusb0.sys`).
+- **All commands are control transfers on endpoint 0.** There are no bulk or interrupt endpoints for drawing.
+  - Write: `bmRequestType = 0x40` (vendor, host→device)
+  - Read: `bmRequestType = 0xC0` (vendor, device→host)
+- Multi-byte values in the data stage are **big-endian** (`hi = v / 256`, `lo = v % 256`).
+- Colours are **RGB565** (16 bit), e.g. `65535` = white.
+- Display: **480 × 320** pixels (bounds checks in `Draw_Text_Font`).
+- The code passes 0 as `wLength` in the setup packet; the actual length comes from the buffer handed to
+  `ControlTransfer`. Inferred: the library sets `wLength` from the buffer length.
 
-## Befehle (bRequest)
+## Commands (bRequest)
 
-| bRequest | Richtung | wValue | wIndex | Daten | Bedeutung (Methode) |
+| bRequest | Dir | wValue | wIndex | Data | Meaning (method) |
 |---|---|---|---|---|---|
-| 12 (0x0C) | IN | 0 | 5 | 8 Byte lesen | Seriennummer (`init`) |
-| 12 | IN | 0 | 1 | 8 Byte lesen, Byte 1 | Firmware-Version (`init`) |
-| 12 | IN | 0 | 2 | 11 Byte lesen, Byte 7 | Sperrstatus, 137 = „blacklisted“ (`GetLockedStatus`) |
-| 12 | IN | Zähler | 4 | 128 Byte je Aufruf | Dateitabelle aus dem Flash (`readTable`) |
-| 12 | IN | … | 3 | … | Screenshot vom Gerät lesen (`readScreenFromDevice`) |
-| 13 (0x0D) | OUT | Helligkeit | Helligkeit | – | Helligkeit 0…255 (`brightness`) |
-| 14 (0x0E) | OUT | Bild-Nr. | 4 | 5 Byte | Flash-Bild anzeigen (`Flash_Screen`) |
-| 15 (0x0F) | OUT | arg1 | arg2 | – | Flash-Befehl (`Send_Command_to_flash`) |
-| 16 (0x10) | OUT | 0 | arg | … | in den Flash kopieren (`CopyToFlash1`) |
-| 25 (0x19) | OUT | Textlänge (+512 = kleine Schrift) | Farbe | Kopf + ASCII | Text mit eingebauter Schrift (`Draw_Text_Font`) |
-| 26 (0x1A) | OUT | Zeilenmaske | Farbe | – | Bereiche mit Farbe füllen (`ClearLines`, `ClearScreen`) |
-| 28 (0x1C) | OUT | 514 | Helligkeit | – | Helligkeit im Leerlauf (`brightnessidle`) |
-| 28 | OUT | … | … | … | EEPROM schreiben / Firmware-Modus (`WriteEprom`, `putInFirmwareMode`): **nicht verwenden** |
-| 29 (0x1D) | OUT | Sektor | Sektor | 4 Byte Position | Icon aus dem Flash zeichnen (`Draw_Icon`) |
-| 30 (0x1E) | OUT | Bild-Nr. | 0 | – | Hintergrundbild setzen (`SetBackground`) |
-| 33 (0x21) | OUT | … | … | ≥13 Byte | Fortschrittsbalken (`Draw_progress_bar`) |
-| 136 (0x88) | IN | x | y | – | Pixel lesen (`getpixel`) |
-| 189 (0xBD) | OUT | Abstand | 1 | – | Zeichenabstand der Schrift (`SetCharacterSpaceFont`) |
-| 190 (0xBE) | OUT | Textlänge | Schrift-Sektor | Kopf + ASCII | Text mit Flash-Schrift (`Draw_Text_Font`) |
-| 191 (0xBF) | OUT | Datenlänge | Formtyp | 10–11 Byte | Rechteck, Kreis, Dreieck, Linien, Pixel (`Draw_*`) |
-| 192 (0xC0) | OUT | Anzahl | 0 | Liste | mehrere Icons auf einmal (`Draw_Icons`) |
-| 193 (0xC1) | OUT | Sektor | 0xC217 | 4 Byte Position | Icon mit Transparenz, Schlüsselfarbe 0xC217 (`Draw_Icon`) |
+| 12 (0x0C) | IN | 0 | 5 | read 8 bytes | serial number (`init`) |
+| 12 | IN | 0 | 1 | read 8 bytes, byte 1 | firmware version (`init`) |
+| 12 | IN | 0 | 2 | read 11 bytes, byte 7 | lock status, 137 = "blacklisted" (`GetLockedStatus`) |
+| 12 | IN | counter | 4 | 128 bytes per call | file table from flash (`readTable`) |
+| 12 | IN | … | 3 | … | read a screenshot from the device (`readScreenFromDevice`) |
+| 13 (0x0D) | OUT | level | level | – | brightness 0…255 (`brightness`) |
+| 14 (0x0E) | OUT | image no. | 4 | 5 bytes | show flash image (`Flash_Screen`) |
+| 15 (0x0F) | OUT | arg1 | arg2 | – | flash command (`Send_Command_to_flash`) |
+| 16 (0x10) | OUT | 0 | arg | … | copy to flash (`CopyToFlash1`) |
+| 25 (0x19) | OUT | text length (+512 = small font) | colour | header + ASCII | text in built-in font (`Draw_Text_Font`) |
+| 26 (0x1A) | OUT | band mask | colour | – | fill bands with a colour (`ClearLines`, `ClearScreen`) |
+| 28 (0x1C) | OUT | 514 | level | – | idle brightness (`brightnessidle`) |
+| 28 | OUT | … | … | … | write EEPROM / firmware mode (`WriteEprom`, `putInFirmwareMode`): **do not use** |
+| 29 (0x1D) | OUT | sector | sector | 4-byte position | draw icon from flash (`Draw_Icon`) |
+| 30 (0x1E) | OUT | image no. | 0 | – | set background image (`SetBackground`) |
+| 33 (0x21) | OUT | … | … | ≥13 bytes | progress bar (`Draw_progress_bar`) |
+| 136 (0x88) | IN | x | y | – | read pixel, 2 bytes RGB565 (`getpixel`) |
+| 189 (0xBD) | OUT | spacing | 1 | – | font character spacing (`SetCharacterSpaceFont`) |
+| 190 (0xBE) | OUT | text length | font sector | header + ASCII | text in a flash font (`Draw_Text_Font`) |
+| 191 (0xBF) | OUT | data length | shape kind | 10–11 bytes | rectangle, circle, triangle, lines, pixels (`Draw_*`) |
+| 192 (0xC0) | OUT | count | 0 | list | several icons at once (`Draw_Icons`) |
+| 193 (0xC1) | OUT | sector | 0xC217 | 4-byte position | icon with transparency, key colour 0xC217 (`Draw_Icon`) |
 
-### Details zu den wichtigsten Befehlen
+### Details of the most important commands
 
-**Fläche füllen (26):** Die Methode bekommt sechs Flags, aus denen eine Maske
-entsteht (`wValue`, Bit 0…5 = 1, 2, 4, 8, 16, 32). `wIndex` ist die
-RGB565-Farbe. `ClearScreen(c)` setzt alle sechs Bits, also Maske `0x3F`.
-Vermutet: sechs horizontale Streifen à 320/6 Pixel.
+**Fill (26):** the method takes six flags that form a mask (`wValue`, bits 0…5 = 1, 2, 4, 8, 16, 32). `wIndex` is
+the RGB565 colour. `ClearScreen(c)` sets all six bits, i.e. mask `0x3F`. Inferred: six horizontal bands of 320/6 px.
 
-**Text, eingebaute Schrift (25):**
-- Schriften: `regular` (`wValue = Länge`) oder `regular_small` (`wValue = Länge + 512`).
-- `wIndex` = Textfarbe (RGB565).
-- Daten: `x(2) y(2) x_ende(2) y+40(2)`, danach der ASCII-Text plus `"\r\n"`,
-  dann ein Nullbyte.
-- `x_ende = min(x + Breite, 480)`.
-- Der Code baut einen 12-Byte-Kopf, kopiert den Text aber ab Byte 8. Die
-  Farbfelder werden also überschrieben, wirksam sind nur 8 Kopfbytes.
+**Text, built-in font (25):**
+- Fonts: `regular` (`wValue = length`) or `regular_small` (`wValue = length + 512`).
+- `wIndex` = text colour (RGB565).
+- Data: `x(2) y(2) x_end(2) y+40(2)`, then the ASCII text plus `"\r\n"`, then a zero byte.
+- `x_end = min(x + width, 480)`.
+- The code builds a 12-byte header but copies the text starting at byte 8, so the colour fields are overwritten and
+  only 8 header bytes take effect.
 
-**Text, Flash-Schrift (190):**
-- `wValue` = Textlänge, `wIndex` = Flash-Sektor der Schrift (aus der Dateitabelle).
-- Daten: `x(2) y(2) x_ende(2) 1(2) Farbe(2) Hintergrund(2)`, danach Text +
-  `"\r\n"` + Nullbyte.
-- Hintergrund `12345` heißt „transparent“.
+**Text, flash font (190):**
+- `wValue` = text length, `wIndex` = flash sector of the font (from the file table).
+- Data: `x(2) y(2) x_end(2) 1(2) colour(2) background(2)`, then text + `"\r\n"` + zero byte.
+- Background `12345` means "transparent". The device clips text at `x_end`.
+- Character widths for alignment are in the font's `info` field of the file table: field 2 is `' '`, field *k* is
+  the character `0x1E + k` (a `#` prefix is ignored, empty fields are missing characters).
 
 **Icon (29 / 193):**
-- Daten: `y(2) x(2)`, in dieser Reihenfolge.
-- Den Sektor liefert die Dateitabelle über den Icon-Namen.
-- 193 zeichnet mit der Transparenz-Schlüsselfarbe 0xC217. Die Icon-Bitmaps
-  verwenden dafür 197,65,189 bzw. 206,65,198 (RGB).
+- Data: `y(2) x(2)`, in this order.
+- The sector comes from the file table via the icon's file name.
+- 193 draws with transparency key colour 0xC217. The icon bitmaps use 197,65,189 or 206,65,198 (RGB) for it.
 
-**Rechteck (191):** geklärt über die 9 Aufrufstellen in `LCDSysInfo2_Do.DoLCDSys`.
-- Signatur: `Draw_Rectangle(x1, y1, x2, y2, Farbe, Umriss, Radius)`.
-- x2/y2 sind **Endkoordinaten**. Beispiel aus dem Code:
-  `(x, y, x+Breite, y+Höhe, color_bg, 0, 0)`.
-- Daten: `y1(2) x1(2) y2(2) x2(2) Farbe(2) [Radius(1)]`. Das sind 10 Byte,
-  mit Radius > 0 11 Byte.
-- `wValue` = Datenlänge (10 bzw. 11). `wIndex` = Formtyp:
+**Rectangle (191):** resolved from the 9 call sites in `LCDSysInfo2_Do.DoLCDSys`.
+- Signature: `Draw_Rectangle(x1, y1, x2, y2, colour, outline, radius)`.
+- x2/y2 are **end coordinates**. Example from the code: `(x, y, x+width, y+height, color_bg, 0, 0)`.
+- Data: `y1(2) x1(2) y2(2) x2(2) colour(2) [radius(1)]` – 10 bytes, 11 with radius > 0.
+- `wValue` = data length (10 or 11). `wIndex` = shape kind:
 
-  | | ohne Radius | mit Radius |
+  | | no radius | with radius |
   |---|---|---|
-  | gefüllt (`Umriss = 0`, `color_bg`) | 3 | 10 |
-  | nur Umriss (`Umriss = 1`, `color_border`) | 2 | 9 |
+  | filled (`outline = 0`, `color_bg`) | 3 | 10 |
+  | outline only (`outline = 1`, `color_border`) | 2 | 9 |
 
-- **Am Gerät bestätigt** (2026-11-09): gefüllt, Umriss und abgerundet,
-  geprüft durch Zurücklesen von Pixeln mit Befehl 136. In der ersten Fassung
-  dieses Dokuments waren wValue und wIndex vertauscht.
+- **Confirmed on the device:** filled, outline and rounded, verified by reading back pixels with command 136.
 
-**Dateitabelle (12, wIndex 4):** geklärt über `LCDSys2_StoreFileTableOnDevice`
-und `LCDSys2_getFilesTable`.
-- Flash: 2048 Sektoren à 4096 Byte (8 MiB). Die ersten 16 Sektoren
-  (`sectors_filetable`) halten die Tabelle.
-- Lesen: `wValue` = Blocknummer 0, 1, 2 …, je 128 Byte. Maximal 479 Blöcke,
-  bis zur Zeile `-------------------<EOT>-----------------`.
-- Danach `\r\n` und Nullbytes entfernen und am EOT-Marker abschneiden.
-- Inhalt ist ASCII. Einträge sind durch `;` getrennt, Felder durch `|`. Jeder
-  Eintrag beginnt mit `|`:
-  - belegt: `|<sektor>|<datei>|<anzahl_sektoren>|<typ>|<info>|<md5>|<bytes>;`
-  - Verweis (gleiche Datei wie ein anderer Sektor): `|<sektor>|<ref_sektor>;`
-  - am Ende: `|UPDATES|<liste>;`
-- Icons und Schriften werden über das Feld `<datei>` gefunden (z. B.
-  `icon_hdd_04_on.bmp`, `Arial_14px.bin`). Für Befehl 29/193 bzw. 190 wird
-  dessen `<sektor>` verwendet.
-- `trans` = 1, wenn `<info>` den Text `(T)` enthält. Dann zeichnet man mit 193
-  statt 29.
-- Das Lesen ist harmlos. Schreiben (`StoreFileTableOnDevice`) nutzt die
-  Flash-Befehle 15/16 und ist für eine Anzeige-App unnötig.
+**File table (12, wIndex 4):** resolved from `LCDSys2_StoreFileTableOnDevice` and `LCDSys2_getFilesTable`.
+- Flash: 2048 sectors of 4096 bytes (8 MiB). The first 16 sectors (`sectors_filetable`) hold the table.
+- Read: `wValue` = block number 0, 1, 2 …, 128 bytes each, at most 479 blocks, until the line
+  `-------------------<EOT>-----------------`.
+- Then remove `\r\n` and zero bytes and cut at the EOT marker.
+- Content is ASCII. Records are separated by `;`, fields by `|`; every record starts with `|`:
+  - used: `|<sector>|<file>|<sector_count>|<type>|<info>|<md5>|<bytes>;`
+  - reference (same file as another sector): `|<sector>|<ref_sector>;`
+  - at the end: `|UPDATES|<list>;`
+- Icons and fonts are looked up by `<file>` (e.g. `icon_hdd_04_on.bmp`, `Arial_14px.bin`); commands 29/193 and 190
+  use its `<sector>`. `<type>` is numeric (1 = image, 3 = font).
+- `trans` = 1 if `<info>` contains `(T)`; such icons are drawn with 193 instead of 29.
+- Reading is harmless. Writing (`StoreFileTableOnDevice`) uses flash commands 15/16 and is not needed for a display app.
 
-## Was das für eine schlanke Ersatz-App bedeutet
+## What this means for a lean replacement app
 
-Das Gerät rendert selbst. Der Host schickt nur winzige Befehle:
+The device renders by itself; the host only sends tiny commands:
 
-- Text: ca. 20–40 Byte
-- Icon: 4 Byte
-- Fläche: 0 Byte Daten
+- text: about 20–40 bytes
+- icon: 4 bytes
+- fill: 0 data bytes
 
-Icons, Hintergründe und Schriften liegen bereits im Flash. Ein Update pro
-Sekunde mit 10–20 Werten sind also wenige hundert Byte. Das schafft ein
-winziges Programm (Python + pyusb oder Rust/Go + libusb) bei praktisch 0 % CPU.
+Icons, backgrounds and fonts are already stored in flash. One update per second with 10–20 values is a few hundred
+bytes.
 
-Minimaler Ablauf:
+Minimal flow:
 
-1. Gerät öffnen (VID 0x20A0, PID 0x41ED).
-2. Dateitabelle einmal lesen (Name → Sektor) und cachen.
-3. `SetBackground` oder `ClearScreen`.
-4. Danach pro Takt nur geänderte Werte: alten Bereich mit 191/26 übermalen,
-   dann Text 25/190 bzw. Icon 29/193.
+1. Open the device (VID 0x20A0, PID 0x41ED).
+2. Read the file table once (name → sector) and cache it.
+3. `SetBackground` or `ClearScreen`.
+4. Per tick only changed values: paint over the old area with 191/26, then text 25/190 or icon 29/193.
 
-## Offene Punkte / nicht verifiziert
+## Open points / not verified
 
-- Geklärt (statisch): Rechteck-Semantik bei 191 und Format der Dateitabelle.
-- Noch offen: Befehl 33 (Fortschrittsbalken, ersetzbar durch zwei Rechtecke),
-  die übrigen Formtypen von 191 (Kreis, Dreieck, Linien), Screenshot-Lesen
-  (wIndex 3). Für einen Prototyp wird nichts davon gebraucht.
-- Den Wortlaut der eigenen Dateitabelle kennt nur das Gerät. Sie muss einmal
-  gelesen werden, und der Lesebefehl ist harmlos.
-- Befehle 15, 16 und 28 (Flash, EEPROM, Firmware-Modus) können das Gerät
-  verändern. Für eine Anzeige-App werden sie nicht gebraucht und sollten
-  gemieden werden.
+- Still open: command 33 (progress bar, replaceable by two rectangles), the other shape kinds of 191 (circle,
+  triangle, lines), screenshot read (wIndex 3). None of these is needed by LCDSysInfo Mini.
+- Commands 15, 16 and 28 (flash, EEPROM, firmware mode) can modify the device. A display app does not need them and
+  should avoid them.

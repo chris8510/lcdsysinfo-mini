@@ -66,9 +66,9 @@ namespace LcdSysInfoMini
         public static Lcd Open()
         {
             IntPtr dev = LibUsb0.FindDevice(Vid, Pid);
-            if (dev == IntPtr.Zero) throw new IOException("LCDSysInfo 3.5 nicht gefunden (läuft noch GOverlay?)");
+            if (dev == IntPtr.Zero) throw new IOException(Tr.T("LCDSysInfo 3.5 nicht gefunden (läuft noch GOverlay?)", "LCDSysInfo 3.5 not found (is GOverlay still running?)"));
             IntPtr h = LibUsb0.usb_open(dev);
-            if (h == IntPtr.Zero) throw new IOException("Gerät konnte nicht geöffnet werden");
+            if (h == IntPtr.Zero) throw new IOException(Tr.T("Gerät konnte nicht geöffnet werden", "Could not open the device"));
             LibUsb0.usb_set_configuration(h, 1);      // ignore "already configured"
             Lcd lcd = new Lcd();
             lcd.handle = h;

@@ -11,10 +11,17 @@ using System.Windows.Forms;
 
 [assembly: System.Reflection.AssemblyTitle("LCDSysInfo Mini")]
 [assembly: System.Reflection.AssemblyProduct("LCDSysInfo Mini")]
-[assembly: System.Reflection.AssemblyVersion("1.1.0.0")]
+[assembly: System.Reflection.AssemblyVersion("1.2.0.0")]
 
 namespace LcdSysInfoMini
 {
+    /// <summary>German when Windows' UI language is German, English otherwise.</summary>
+    static class Tr
+    {
+        public static bool German { get { return CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "de"; } }
+        public static string T(string de, string en) { return German ? de : en; }
+    }
+
     static class Log
     {
         static readonly object Gate = new object();
@@ -38,7 +45,7 @@ namespace LcdSysInfoMini
     sealed class Worker
     {
         public volatile string TemplatePath;
-        public volatile string Status = "Startet ...";
+        public volatile string Status = Tr.T("Startet ...", "Starting ...");
         volatile bool stop, redraw;
         readonly Thread thread;
         readonly string inventoryPath;
@@ -65,10 +72,17 @@ namespace LcdSysInfoMini
             try
             {
                 sensors = new Sensors();
-                try { sensors.WriteInventory(inventoryPath); } catch (Exception ex) { Log.Write("Sensorliste: " + ex.Message); }
+                try { sensors.WriteInventory(inventoryPath); }
+                catch (Exception ex) { Log.Write(Tr.T("Sensorliste: ", "Sensor list: ") + ex.Message); }
                 bool restricted = false;
                 while (!stop)
                 {
+                    if (string.IsNullOrEmpty(TemplatePath) || !File.Exists(TemplatePath))
+                    {
+                        Status = Tr.T("Keine Vorlage gewählt", "No template selected");
+                        Sleep(2.0);
+                        continue;
+                    }
                     try
                     {
                         using (Lcd lcd = Lcd.Open())
@@ -78,8 +92,9 @@ namespace LcdSysInfoMini
                             var r = new Renderer(lcd, files, tpl);
                             r.DrawStatic();
                             redraw = false;
-                            if (r.Missing.Count > 0) Log.Write("Fehlt auf dem Gerät: " + string.Join(", ", r.Missing));
-                            Log.Write("Vorlage gezeichnet: " + Path.GetFileName(TemplatePath));
+                            if (r.Missing.Count > 0)
+                                Log.Write(Tr.T("Fehlt auf dem Gerät: ", "Missing on the device: ") + string.Join(", ", r.Missing));
+                            Log.Write(Tr.T("Vorlage gezeichnet: ", "Template drawn: ") + Path.GetFileName(TemplatePath));
                             List<string> ids = tpl.SensorIds.ToList();
                             bool first = true;
                             while (!stop && !redraw)
@@ -89,11 +104,11 @@ namespace LcdSysInfoMini
                                 Status = StatusText(values);
                                 if (first)
                                 {
-                                    Log.Write("Werte: " + string.Join(", ", values.Select(kv => kv.Key + "=" + Fmt(kv.Value))));
+                                    Log.Write(Tr.T("Werte: ", "Values: ") + string.Join(", ", values.Select(kv => kv.Key + "=" + Fmt(kv.Value))));
                                     first = false;
                                     if (!restricted)
                                     {
-                                        Log.Write("Abgefragte Hardware: " + string.Join(", ", sensors.RestrictToUsed()));
+                                        Log.Write(Tr.T("Abgefragte Hardware: ", "Polled hardware: ") + string.Join(", ", sensors.RestrictToUsed()));
                                         restricted = true;
                                     }
                                 }
@@ -104,16 +119,16 @@ namespace LcdSysInfoMini
                     catch (Exception ex)
                     {
                         if (stop) break;
-                        Status = "Display nicht erreichbar";
-                        Log.Write("Display nicht erreichbar, neuer Versuch in 5 s: " + ex.Message);
+                        Status = Tr.T("Display nicht erreichbar", "Display not reachable");
+                        Log.Write(Tr.T("Display nicht erreichbar, neuer Versuch in 5 s: ", "Display not reachable, retrying in 5 s: ") + ex.Message);
                         Sleep(5.0);
                     }
                 }
             }
             catch (Exception ex)
             {
-                Status = "Fehler: " + ex.Message;
-                Log.Write("Abbruch: " + ex);
+                Status = Tr.T("Fehler: ", "Error: ") + ex.Message;
+                Log.Write(Tr.T("Abbruch: ", "Aborted: ") + ex);
             }
             finally
             {
@@ -175,18 +190,23 @@ namespace LcdSysInfoMini
             };
 
             label("LCDSysInfo Mini " + typeof(InfoForm).Assembly.GetName().Version.ToString(3), true);
-            label("Schlanke Statusanzeige für das Coldtears LCDSysInfo 3.5 (USB) – Ersatz für GOverlay.", false);
-            label("Quellcode und Anleitung auf GitHub:", false);
+            label(Tr.T("Schlanke Statusanzeige für das Coldtears LCDSysInfo 3.5 (USB) – Ersatz für GOverlay.",
+                       "Lightweight status display for the Coldtears LCDSysInfo 3.5 (USB) – a replacement for GOverlay."), false);
+            label(Tr.T("Quellcode und Anleitung auf GitHub:", "Source code and instructions on GitHub:"), false);
             link(RepoUrl, RepoUrl);
-            label("Erstellt von Claude (Anthropic) & chris8510", false);
-            label("Voraussetzungen", true);
-            label("• PawnIO-Treiber (separat installieren) – LibreHardwareMonitor braucht ihn für CPU-Temperatur und Lüfter.", false);
+            label(Tr.T("Erstellt von Claude (Anthropic) & chris8510", "Created by Claude (Anthropic) & chris8510"), false);
+            label(Tr.T("Voraussetzungen", "Requirements"), true);
+            label(Tr.T("• PawnIO-Treiber (separat installieren) – LibreHardwareMonitor braucht ihn für CPU-Temperatur und Lüfter.",
+                       "• PawnIO driver (install separately) – LibreHardwareMonitor needs it for CPU temperature and fans."), false);
             link(PawnIoUrl, PawnIoUrl);
-            label("• LibreHardwareMonitor – als Bibliothek enthalten, keine eigene Installation nötig.", false);
-            label("• USB-Treiber libusb-win32 für das Display – wird mit GOverlay bzw. dem LCDSysInfo-Treiber installiert.", false);
-            label("• Start mit Adminrechten (Autostart-Aufgabe), sonst fehlen Temperaturen und Lüfter.", false);
-            label("Status: PawnIO " + (PawnIoInstalled() ? "gefunden" : "NICHT gefunden") +
-                  ", Adminrechte " + (IsAdmin() ? "ja" : "nein"), true);
+            label(Tr.T("• LibreHardwareMonitor – als Bibliothek enthalten, keine eigene Installation nötig.",
+                       "• LibreHardwareMonitor – included as a library, no separate installation needed."), false);
+            label(Tr.T("• USB-Treiber libusb-win32 für das Display – wird mit GOverlay bzw. dem LCDSysInfo-Treiber installiert.",
+                       "• libusb-win32 USB driver for the display – installed with GOverlay or the LCDSysInfo driver."), false);
+            label(Tr.T("• Start mit Adminrechten (Autostart-Aufgabe), sonst fehlen Temperaturen und Lüfter.",
+                       "• Run with admin rights (autostart task), otherwise temperatures and fans are missing."), false);
+            label("Status: PawnIO " + (PawnIoInstalled() ? Tr.T("gefunden", "found") : Tr.T("NICHT gefunden", "NOT found")) +
+                  ", " + Tr.T("Adminrechte ", "admin rights ") + (IsAdmin() ? Tr.T("ja", "yes") : Tr.T("nein", "no")), true);
 
             var ok = new Button { Text = "OK", DialogResult = DialogResult.OK, Anchor = AnchorStyles.Right, Margin = new Padding(0, 8, 0, 0) };
             flow.Controls.Add(ok);
@@ -197,6 +217,7 @@ namespace LcdSysInfoMini
 
     sealed class TrayApp : ApplicationContext
     {
+        const string GOverlayDir = @"C:\Program Files (x86)\GOverlay";
         readonly NotifyIcon icon;
         readonly Worker worker;
         readonly string settingsPath;
@@ -210,16 +231,15 @@ namespace LcdSysInfoMini
                 string saved = File.ReadAllText(settingsPath).Trim();
                 if (File.Exists(saved)) templatePath = saved;
             }
-            if (templatePath == null) templatePath = @"C:\Program Files (x86)\GOverlay\mystylen1 (LCD2).gov";
 
             worker = new Worker(templatePath, Path.Combine(dir, "sensors.txt"));
             var menu = new ContextMenuStrip();
-            menu.Items.Add("Neu zeichnen", null, delegate { worker.Redraw(); });
-            menu.Items.Add("Vorlage wählen ...", null, delegate { ChooseTemplate(); });
-            menu.Items.Add("Log öffnen", null, delegate { OpenFile(Log.PathName); });
+            menu.Items.Add(Tr.T("Neu zeichnen", "Redraw"), null, delegate { worker.Redraw(); });
+            menu.Items.Add(Tr.T("Vorlage wählen ...", "Choose template ..."), null, delegate { ChooseTemplate(); });
+            menu.Items.Add(Tr.T("Log öffnen", "Open log"), null, delegate { OpenFile(Log.PathName); });
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add("Info ...", null, delegate { ShowInfo(); });
-            menu.Items.Add("Beenden", null, delegate { Quit(); });
+            menu.Items.Add(Tr.T("Beenden", "Exit"), null, delegate { Quit(); });
 
             icon = new NotifyIcon { Icon = MakeIcon(), Text = "LCDSysInfo Mini", ContextMenuStrip = menu, Visible = true };
             icon.DoubleClick += delegate { worker.Redraw(); };
@@ -230,9 +250,9 @@ namespace LcdSysInfoMini
                 icon.Text = t.Length > 63 ? t.Substring(0, 63) : t;
             };
             tooltipTimer.Start();
-            if (!File.Exists(worker.TemplatePath)) ChooseTemplate();   // first start on another PC
+            if (string.IsNullOrEmpty(worker.TemplatePath)) ChooseTemplate();   // first start
             worker.Start();
-            Log.Write("Gestartet, Vorlage: " + worker.TemplatePath);
+            Log.Write(Tr.T("Gestartet, Vorlage: ", "Started, template: ") + (worker.TemplatePath ?? "-"));
         }
 
         static Icon MakeIcon()
@@ -254,13 +274,18 @@ namespace LcdSysInfoMini
 
         void ChooseTemplate()
         {
-            using (var dlg = new OpenFileDialog { Filter = "GOverlay-Vorlage (*.gov)|*.gov", Title = "Vorlage wählen" })
+            using (var dlg = new OpenFileDialog
             {
-                try { dlg.InitialDirectory = Path.GetDirectoryName(worker.TemplatePath); } catch (ArgumentException) { }
+                Filter = Tr.T("GOverlay-Vorlage (*.gov)|*.gov", "GOverlay template (*.gov)|*.gov"),
+                Title = Tr.T("Vorlage wählen", "Choose template"),
+            })
+            {
+                string start = string.IsNullOrEmpty(worker.TemplatePath) ? GOverlayDir : Path.GetDirectoryName(worker.TemplatePath);
+                if (Directory.Exists(start)) dlg.InitialDirectory = start;
                 if (dlg.ShowDialog() != DialogResult.OK) return;
                 worker.TemplatePath = dlg.FileName;
                 File.WriteAllText(settingsPath, dlg.FileName);
-                Log.Write("Vorlage gewechselt: " + dlg.FileName);
+                Log.Write(Tr.T("Vorlage gewechselt: ", "Template changed: ") + dlg.FileName);
                 worker.Redraw();
             }
         }
@@ -284,7 +309,7 @@ namespace LcdSysInfoMini
             tooltipTimer.Stop();
             icon.Visible = false;
             worker.Stop();
-            Log.Write("Beendet");
+            Log.Write(Tr.T("Beendet", "Exited"));
             ExitThread();
         }
     }
@@ -302,7 +327,7 @@ namespace LcdSysInfoMini
                 if (!created) return;                       // already running
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
-                Application.ThreadException += (s, e) => Log.Write("UI-Fehler: " + e.Exception);
+                Application.ThreadException += (s, e) => Log.Write("UI: " + e.Exception);
                 string tpl = args.Length > 0 && File.Exists(args[0]) ? args[0] : null;
                 Application.Run(new TrayApp(tpl, dir));
             }
