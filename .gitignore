@@ -1,0 +1,16 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Downloaded libraries and build output
+vendor/
+app/LCDSysInfoMini/
+
+# Machine-specific runtime files (logs, caches, hardware inventory, task backups)
+*.log
+*.ini
+sensors.txt
+filetable.cache
+backup_*.xml
+screen_*.png
